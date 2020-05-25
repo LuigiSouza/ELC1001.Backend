@@ -6,7 +6,7 @@ var jwt = require('jsonwebtoken');
 
 exports.create = async (req, res) => {
     try {
-        const { username, name, email, password, gender, phone } = req.query;
+        const { username, name, email, password, gender, phone } = req.body;
 
         if( !username || !name || !email || !password ) {
             res.status(400).send({
@@ -33,17 +33,12 @@ exports.create = async (req, res) => {
                 email,
                 password,
                 gender,
-                phone,
-                account_activated: false,
+                phone
             });
 
             userAux.token = userAux.generateAuthToken();
-
-            user = User.create({
-                userAux
-            });
             
-            res.status(201).json({
+            res.status(201).send({
                 sucess: true,
                 user: userAux,
                 token: userAux.tokens
@@ -95,11 +90,9 @@ exports.login = async (req, res) => {
                 }
                 let token = jwt.sign(tokenData, process.env.JWT_KEY, { expiresIn: '1m' });
 
-                res.status(200).json({
+                res.status(200).send({
                     sucess: true,
-                    user: {
-                        validUser
-                    },
+                    user: validUser,                    
                     token: token
                 });                
             } else {
@@ -123,35 +116,14 @@ exports.login = async (req, res) => {
     }
 };
 
-exports.getInfo = async (req, res) => {
+exports.getInfo = (req, res) => {
     try {
-        console.log(req.headers.authorization);
-        // Pega o req.auth e separa o segundo argumento que são os dados
-        const auth = (req.headers.authorization || '').split(' ')[1] || '' ; 
-        // Converte de base 64 para o login e password
-        const [login, password] = Buffer.from(auth, 'base64').toString().split(':');
+        let user = req.user;
 
-        var validUser = await User.findByUsername(login, password);
-        console.log(validUser);
-      
-        // Verify login and password are set and correct
-        if ( validUser ) {
+        delete user.password;
+        delete user.tokens;
 
-          res.status(200).json({
-              sucess: true,
-              user: {
-                username: validUser.username,
-                name: validUser.name,
-                email: validUser.email,
-                gender: validUser.gender,
-                phone: validUser.phone
-              }
-          });
-        } else {
-            res.status(401).send({
-                message: "Email ou senha inválidos" // usuario ou senha invalidos
-            });
-        }      
+        res.status(200).send({ user: user });  
         // Essa rota deve retornar as informações do usuário que está fazendo a requisição.
         
         // Você pode escolher como retornar os dados, contanto que todas as informações do usuário
