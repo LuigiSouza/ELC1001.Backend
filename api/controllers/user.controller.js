@@ -6,49 +6,57 @@ var jwt = require('jsonwebtoken');
 
 exports.create = async (req, res) => {
     try {
-        const { username, name, email, password, gender, phone } = req.body;
+        const user = req.body;
 
-        if( !username || !name || !email || !password ) {
+        if( !user.username ) {
             res.status(400).send({
-                message: "Missing information."
+                message: "Missing username."
+            }); 
+        }
+        else if( !user.name ) {
+            res.status(400).send({
+                message: "Missing name."
+            }); 
+        }
+        else if( !user.email ) {
+            res.status(400).send({
+                message: "Missing email."
+            }); 
+        }
+        else if( !user.password ) {
+            res.status(400).send({
+                message: "Missing password."
             }); 
         }
 
-        const email_exist = await User.findOne({ email });
-        const user_exist = await User.findOne({ username });
-
-        let user = await User.findOne({ username , email });
-
-        if(!email_exist && !user_exist) {
-
-            const split = name.split(' ');
-            const fullname = {
-                first: split[0],
-                last: split[1]
-            };
-
-            var userAux = new User({
-                username,
-                name: fullname,
-                email,
-                password,
-                gender,
-                phone
-            });
-
-            userAux.token = userAux.generateAuthToken();
-            
-            res.status(201).send({
-                sucess: true,
-                user: userAux,
-                token: userAux.tokens
-            });            
-
-        }
         else {
-            res.status(400).send({
-                message: "User already exist."
-            });  
+            const { email } = user.email;
+            const { username } = user.username;
+
+            const email_exist = await User.findOne({ email });
+            const user_exist = await User.findOne({ username });
+
+            if(!email_exist && !user_exist) {
+
+                var userAux = new User(
+                    user
+                );
+
+                userAux.token = await userAux.generateAuthToken();
+                
+                res.status(201).send({
+                    sucess: true,
+                    user: userAux,
+                    token: userAux.tokens
+                });          
+
+            }
+            else {
+                res.status(400).send({
+                    message: "User already exist."
+                });  
+            }
+
         }
         // Essa rota deve criar um novo usuário no banco de dados e criar um token
         // para ele (para gerar o token use o método definido no arquivo user.model.js).
@@ -69,31 +77,24 @@ exports.create = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { username, email, password } = req.body.userData;
+        const { email, password } = req.body.userData;
 
-        if (username == undefined || email == undefined || password == undefined) {
+        if (email == undefined || password == undefined) {
             res.status(401).send({
                 message: "Email ou senha inválidos" // usuario ou senha invalidos
             });
         } else {
 
-            // A decidir: validar via email ou via usuario
-            var validUser = await User.findByUsername(username, password);
-            var validEmail = await User.findByEmail(email, password);
+            var user = await User.findByEmail(email, password);
 
-            if (validUser && validEmail) {
+            if ( user ) {
 
-                let tokenData = {
-                    name: validUser.name,
-                    email: validUser.email,
-                    // id: validUser._id
-                }
-                let token = jwt.sign(tokenData, process.env.JWT_KEY, { expiresIn: '1m' });
+                let token = await user.generateAuthToken();
 
                 res.status(200).send({
                     sucess: true,
-                    user: validUser,                    
-                    token: token
+                    user,             
+                    token
                 });                
             } else {
                 res.status(401).send({
