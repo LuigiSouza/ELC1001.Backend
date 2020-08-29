@@ -30,6 +30,18 @@ exports.create = async (req, res) => {
         }
 
         else {
+
+            if( user.name.first == undefined ) {
+                return res.status(400).send({
+                    message: "Missing first name."
+                }); 
+            }
+            else if ( user.name.last == undefined ) {
+                return res.status(400).send({
+                    message: "Missing last name."
+                }); 
+            }
+
             const { email } = user.email;
             const { username } = user.username;
 
@@ -77,31 +89,27 @@ exports.create = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body.userData;
-
-        if (email == undefined || password == undefined) {
-            res.status(401).send({
-                message: "Email ou senha inválidos" // usuario ou senha invalidos
-            });
-        } else {
-
-            var user = await User.findByEmail(email, password);
+        const { username, email, password } = req.body.userData;
+            
+        if (password) {
+            
+            if (email) var user = await User.findByEmail(email, password);
+            else if (username) var user = await User.findByUsername(username, password);
 
             if ( user ) {
 
                 let token = await user.generateAuthToken();
 
-                res.status(200).send({
+                return res.status(200).send({
                     sucess: true,
                     user,             
                     token
                 });                
-            } else {
-                res.status(401).send({
-                    message: "Email ou senha inválidos" // usuario ou senha invalidos
-                });
-            }
+            } 
         }
+        res.status(401).send({
+            message: "Usuário ou senha inválidos" // usuario ou senha invalidos
+        });
         // Essa rota deve, usando os métodos disponibilizados no arquivo user.model.js
         // confirmar que as credenciais digitadas estão corretas e gerar um novo token
         // JWT para o usuário.
